@@ -12,8 +12,16 @@ let s:buf_name = '[sosowa] main_buf'
 
 " Script
 function! g:sosowa#open_main_page()
-    echo "open_main_pageOOOOOOO"
+    echo "open_main_page"
     new `=s:buf_name`
+
+    python << EOF
+    import vim
+    print("Hello python in vim")
+
+    vim.current.buffer.append("aaa")
+
+    EOF
 
 endfunction
 
