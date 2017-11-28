@@ -1,11 +1,11 @@
-import pyquery
 import requests
+import pyquery
 import json
 import threading
 import re
 import collections
 
-import article_entity
+import sosowa_scraper.entity.article_entity
 
 ####
 # sosowa_requester

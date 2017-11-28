@@ -1,0 +1,1 @@
+# sosowa scraper entity init.
