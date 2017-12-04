@@ -8,16 +8,16 @@ scriptencoding utf-8
 let s:save_cpo = &cpo
 set cpo&vim
 
-"script
-command! SosowaOpen call g:sosowa#open_main_page()
+autocmd FileType sosowa_vim nnoremap <buffer> q <C-w>c
 
-"command! SosowaNextPage call s:sosowa#next_page()
+"script
+command! -nargs=? SosowaOpen call g:sosowa#open_main_page(<f-args>)
+
+command! SosowaNextPage call g:sosowa#next_page()
 "
-"command! SosowaPrevPage call s:sosowa#prev_page()
+command! SosowaPrevPage call g:sosowa#prev_page()
 "
-"command! -nargs=1 SosowaJumpPage call s:sosowa#jump_page(<f-args>)
-"
-"command! -nargs=1 SosowaShowArticle call s:sosowa#show_article(<f-args>)
+command! SosowaShowObject call g:sosowa#show_object()
 "
 "command! SosowaBackMain call s:sosowa#back_main()
 "

@@ -1,0 +1,1 @@
+matchstr(getline('.'), 'S*', col('.')-1)

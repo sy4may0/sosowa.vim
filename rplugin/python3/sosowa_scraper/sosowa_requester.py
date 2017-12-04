@@ -5,7 +5,8 @@ import threading
 import re
 import collections
 
-import sosowa_scraper.entity.article_entity
+from sosowa_scraper.entity.article_entity import article_entity
+from sosowa_scraper.utils.sosowa_cache import sosowa_cache
 
 ####
 # sosowa_requester
@@ -19,6 +20,7 @@ class sosowa_requester():
     __reload_lock = threading.Lock()
     __instance = None
 
+    __cache = None
     __latest_page = None
     __config = None
 
@@ -31,6 +33,9 @@ class sosowa_requester():
 
         if self.__latest_page is None:
             self.reload_sosowa_latest_pages()
+
+        if self.__cache is None:
+            self.__cache = sosowa_cache(self.__config['max_page_cache'])
 
     # instance created check.
     #
@@ -65,10 +70,17 @@ class sosowa_requester():
     # @throws HtmlElementFailureException
     #
     def get_sosowa_product_list(self, page_num):
-        if page_num > self.__latest_page or page_num <= 0:
+        if page_num > self.__latest_page or page_num < 0:
             raise PageOverflowException(page_num)
 
-        result = collections.OrderedDict()
+        if page_num == -1:
+            page_num = self.__latest_page
+
+        result = self.__cache.get_page(page_num)
+        if result is not None:
+            return result
+        else:
+            result = collections.OrderedDict()
 
         html = requests.get(self.__config["main_url"] + "/sosowa/ssw_l/" + str(page_num))
         query = pyquery.PyQuery(html.text)
@@ -78,7 +90,7 @@ class sosowa_requester():
         # article data scraping.
         for article in articles:
             
-            e_article = article_entity.article_entity()
+            e_article = article_entity()
 
             e_article.set_article('p_belong', page_num)
 
@@ -160,15 +172,22 @@ class sosowa_requester():
 
             result[key].set_article('tag', result_tags)
 
-        return result
-
+        self.__cache.set_page(result, page_num)
+        return self.__cache.get_page(page_num)
    
     # get_sosowa_article()
     # Get sosowa article.
     #
     # @param article : Sosowa article entity.
     #
-    def get_sosowa_article(self, article):
+    def get_sosowa_article(self, article_id, page_num):
+
+        page_list = self.get_sosowa_product_list(int(page_num))
+        article = page_list[article_id] 
+
+        if article.get_article('is_load_content'):
+            return article
+
         url = list()
         url.append(self.__config['main_url'])
         url.append("sosowa/ssw_l")
@@ -182,7 +201,6 @@ class sosowa_requester():
         page_list = []
         try:
             ul_pager = self.__get_pyquery_element(html.text, query, 'ul.pager')
-            print(len(ul_pager))
             if len(ul_pager) != 2:
                 raise SosowaRequesterException("Article pager scrape failed.")
             a_pager = self.__get_lxml_element(ul_pager[0], 'a')
@@ -197,7 +215,7 @@ class sosowa_requester():
         contents = []
         i = 0
         for page in page_list:
-            contents.append("[PAGE:" + str(i) + "]\n")
+            contents.append("[PAGE:" + str(i) + "]")
             if page != '':
                 html = requests.get(self.__config['main_url'] + page)
                 query = pyquery.PyQuery(html.text)
@@ -208,11 +226,11 @@ class sosowa_requester():
             content = (d_content.html(method='html'))
 
             if content is not None:
-                contents.append(content.replace('<br>', "\n"))
+                contents.extend(content.split('<br>'))
 
             i += 1
             
-        article.set_article('content', "".join(contents))
+        article.set_article('content', contents)
 
 
         # Scrape afterword.
@@ -221,9 +239,17 @@ class sosowa_requester():
             raise SosowaRequesterException("Article afterwordBody scraping failed.")
         afterword = (d_afterword.html(method='html'))
         if afterword is not None:
-            article.set_article('afterword', afterword.replace("<br>", "\n"))
+            article.set_article('afterword', afterword.split("<br>"))
         else:
             article.set_article('afterword', "None")
+
+        article.set_article('is_load_content', True)
+        return article
+
+    # get_latest_page
+    #
+    def get_latest_page(self):
+            return self.__latest_page
 
     # get_pyquery_element()
     # Get HTML Elements with checking.
@@ -251,13 +277,14 @@ class sosowa_requester():
 
         return elements
 
+
 ####
 # PageOverflowException
 # This Exception is thrown at be called sosowa page number is out of range.
 #
 class PageOverflowException(Exception):
     def __init__(self, page_num):
-        self.page_num = page_num
+        self.page_num = str(page_num)
         self.message = "Page [" + self.page_num + "] is out of range."
 
     def get_page_num(self):

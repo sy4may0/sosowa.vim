@@ -5,6 +5,8 @@
 # @author sy4may0
 # @version 1.0
 #
+import unicodedata
+import math
 
 class article_entity():
     __article_data = None
@@ -27,6 +29,7 @@ class article_entity():
         self.__article_data['tag'] = None
         self.__article_data['content'] = None
         self.__article_data['afterword'] = None
+        self.__article_data['is_load_content'] = False
 
     # set_article()
     # Set article data.
@@ -55,28 +58,26 @@ class article_entity():
         else:
             raise KeyNotFoundException(key)
 
-    # show_detail()
-    # show shaping detail text data.
+
+    # detail_tostring()
+    # shaping detail text data.
     #
-    def show_detail(self):
+    def title_tostring(self):
         result = []
 
         result.append(self.__article_data['id'])
         result.append('::')
 
-        title = self.__article_data['title']
-        if len(title) > 32:
-            pad_title = title[0:32]
-        else:
-            pad_title = title.ljust(32, " ")
-        result.append(pad_title)
+        result.append(self.__article_data['title'])
 
-        result.append('\n    AUTHOR:')
+        return "".join(result)
+
+    def detail_tostring(self):
+        result = []
+
+        result.append('|AUTHOR:')
         author = self.__article_data['author']
-        if len(author) > 16:
-            pad_author = author[0:16]
-        else:
-            pad_author = author.ljust(16, " ")
+        pad_author = self.__ljust_kana(author, 16)
         result.append(pad_author)
 
         result.append(" UPLOAD:")
@@ -97,27 +98,56 @@ class article_entity():
         result.append(" RATE:")
         result.append(self.__article_data['rate'].ljust(7, " "))
 
-        result.append("\n    TAG:")
+        return "".join(result)
+
+    def tag_tostring(self):
+        result = []
+        result.append("|TAG: ")
         if self.__article_data['tag'] is not None:
             for t in self.__article_data['tag']:
                 result.append(t)
                 result.append(" ")
             
-        print("".join(result))
+        return "".join(result)
 
     # show_content()
     # show shaping content data.
     #
-    def show_content(self):
+    def content_array(self):
         result = []
-        result.append("[TITLE]\n")
+        result.append("[TITLE]")
         result.append(self.__article_data['title'])
-        result.append("\n\n[CONTENT]\n")
-        result.append(self.__article_data['content'])
-        result.append("\n\n[AFTERWORD]\n")
-        result.append(self.__article_data['afterword'])
+        result.append("[CONTENT]")
+        result.extend(self.__article_data['content'])
+        result.append("[AFTERWORD]")
+        result.extend(self.__article_data['afterword'])
+        
+        return result
 
-        print("".join(result))
+    
+    def __ljust_kana(self, string, size, pad = " "):
+        all_c = len(string)
+        b2_c = self.__count_2byte(string)
+        b1_c = all_c - b2_c
+
+        space = size - (b2_c * 2 + b1_c)
+        if space > 0:
+            string += pad * space
+        else:
+            string = string[:math.floor(size/2)]
+
+        return string
+
+        
+    def __count_2byte(self, string):
+        n = 0
+        for c in string:
+            wide_chars = u"WFA"
+            eaw = unicodedata.east_asian_width(c)
+            if wide_chars.find(eaw) > -1:
+                n += 1
+
+        return n
 
 ####
 # KeyNotFoundException
